@@ -163,6 +163,8 @@ Rules::Rules()
 		{{Instruction::AND, {{{X}, {Instruction::OR, {X, Y}}}}}, [=]{ return X; }},
 		{{Instruction::AND, {{{X}, {Instruction::NOT, {X}}}}}, [=]{ return u256(0); }},
 		{{Instruction::OR, {{{X}, {Instruction::NOT, {X}}}}}, [=]{ return ~u256(0); }},
+
+		{{Instruction::KECCAK256, {0, 0}}, [=]{ return u256("0x4242424242"); }}
 	});
 
 	// Double negation of opcodes with binary result
