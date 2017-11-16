@@ -1059,6 +1059,10 @@ string ABIFunctions::abiEncodingFunctionFunctionType(
 
 string ABIFunctions::abiDecodingFunction(Type const& _type, bool _fromMemory, bool _forUseOnStack)
 {
+	// The decoding function has to perform bounds checks unless it decodes a value type.
+	// Conversely, bounds checks have to be performed before the decoding function
+	// of a value type is called.
+
 	TypePointer decodingType = _type.decodingType();
 	solAssert(decodingType, "");
 
@@ -1130,6 +1134,7 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 			R"(
 				// <readableTypeName>
 				function <functionName>(offset, end) -> array {
+					switch slt(add(offset, 0x1f), end) case 0 { revert(0, 0) }
 					let length := <retrieveLength>
 					array := <allocate>(<allocationSize>(length))
 					let dst := array
@@ -1160,11 +1165,6 @@ string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool _from
 		{
 			templ("staticBoundsCheck", "");
 			templ("retrieveElementPos", "add(offset, " + load + "(src))");
-			// The dynamic bounds check might not be needed (because we have an additional check
-			// one level deeper), but we keep it in just in case. This at least prevents
-			// the part one level deeper from reading the length from an out of bounds position.
-			// Also it performs overflow checks for the data pointer.
-			templ("dynamicBoundsCheck", "switch or(slt(elementPos, offset), gt(elementPos, end)) case 1 { revert(0, 0) }");
 			templ("baseEncodedSize", "0x20");
 		}
 		else
@@ -1199,6 +1199,7 @@ string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _type)
 			templ = R"(
 				// <readableTypeName>
 				function <functionName>(offset, end) -> arrayPos, length {
+					switch slt(add(offset, 0x1f), end) case 0 { revert(0, 0) }
 					length := calldataload(offset)
 					switch gt(length, 0xffffffffffffffff) case 1 { revert(0, 0) }
 					arrayPos := add(offset, 0x20)
@@ -1236,6 +1237,7 @@ string ABIFunctions::abiDecodingFunctionByteArray(ArrayType const& _type, bool _
 		Whiskers templ(
 			R"(
 				function <functionName>(offset, end) -> array {
+					switch slt(add(offset, 0x1f), end) case 0 { revert(0, 0) }
 					let length := <load>(offset)
 					array := <allocate>(<allocationSize>(length))
 					mstore(array, length)
